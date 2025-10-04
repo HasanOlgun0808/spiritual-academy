@@ -1,16 +1,69 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
   <meta charset="utf-8">
-  <title>Yönlendiriliyor...</title>
-  <meta http-equiv="refresh" content="0; url=https://spiritualacademy7697.pinet.com/">
-  <link rel="canonical" href="https://spiritualacademy7697.pinet.com/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Spiritual Academy | Pi Ödeme</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #f3f0ff, #fff);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+      padding: 30px;
+      text-align: center;
+      max-width: 420px;
+    }
+    h1 { color: #6a4df5; }
+    button {
+      background: linear-gradient(135deg, #6a4df5, #a07bff);
+      border: none;
+      color: #fff;
+      padding: 12px 20px;
+      font-size: 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    button:hover { opacity: 0.9; }
+  </style>
 </head>
 <body>
-  <p>Uygulama <a href="https://spiritualacademy7697.pinet.com/">buraya</a> taşındı. 1 sn içinde yönlendirileceksiniz.</p>
+  <div class="card">
+    <h1>✨ Spiritual Academy</h1>
+    <p>Pi hesabınızla giriş yaparak güvenli ödeme işlemlerini başlatın.</p>
+    <button id="pi-login-btn" type="button">🔐 Pi ile Giriş Yap</button>
+  </div>
+
+  <!-- Pi SDK -->
+  <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+
+  <!-- Giriş / Ödeme Scripti -->
   <script>
-    window.location.replace("https://spiritualacademy7697.pinet.com/");
+    // SDK başlatma
+    Pi.init({ version: "2.0", sandbox: false });
+
+    document.getElementById("pi-login-btn").addEventListener("click", async () => {
+      try {
+        const scopes = ["username", "payments"];
+        const auth = await Pi.authenticate(scopes, (payment) => {
+          console.log("Payment callback:", payment);
+        });
+        console.log("Giriş başarılı:", auth);
+        alert("Giriş başarılı: @" + auth.user.username);
+      } catch (err) {
+        console.error(err);
+        alert("Pi ile giriş başarısız. Lütfen tekrar deneyin.");
+      }
+    });
   </script>
 </body>
 </html>
