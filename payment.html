@@ -2,121 +2,76 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Pi Test Ödemesi</title>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Pi SDK -->
   <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-
   <style>
-    body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; padding:24px}
-    h1{margin:0 0 8px}
-    p{margin:0 0 16px}
-    button{font-size:18px;padding:12px 18px;border-radius:10px;border:1px solid #ddd}
-    #log{margin-top:18px;font-size:14px;white-space:pre-line}
-    .ok{color:#0a7f38}
-    .err{color:#b00020}
+    body { font-family: system-ui, sans-serif; padding: 20px; }
+    button { font-size: 18px; padding: 12px 18px; margin-top: 20px; }
+    #log { margin-top: 16px; font-size: 14px; white-space: pre-wrap; }
   </style>
 </head>
-
 <body>
-  <h1>Pi Test Ödemesi</h1>
+  <h2>Pi Test Ödemesi</h2>
   <p>Bu sayfa yalnızca 10. adımı tamamlamak için test amaçlıdır.</p>
-
   <button id="payBtn">0.01 Test-π ile Öde</button>
   <div id="log"></div>
 
   <script>
-    // === AYARLAR ===
-    // Backend’in (Render) kök adresi:
-    const BACKEND = "https://spiritual-academy.onrender.com";
+    const log = (m) => document.getElementById("log").innerText = m;
 
-    // Küçük yardımcılar
-    const logBox = document.getElementById("log");
-    const log = (msg, cls="") => {
-      const line = document.createElement("div");
-      if (cls) line.className = cls;
-      line.textContent = msg;
-      logBox.appendChild(line);
-    };
-
-    // Pi Browser dışında açılırsa uyar
+    // Pi Browser kontrolü
     if (!window.Pi) {
-      log("Lütfen bu sayfayı Pi Browser içinde açın.", "err");
+      log("Lütfen bu sayfayı Pi Browser içinde açın.");
     } else {
-      // SDK'yı başlat
+      // SDK başlat
       Pi.init({ version: "2.0" });
 
-      // (Opsiyonel) auth – bazı kurulumlarda gerekebilir
-      const scopes = ["payments","username"];
-      Pi.authenticate(scopes).catch(()=>{ /* sessiz geç */ });
-    }
+      // Authentication (opsiyonel)
+      const scopes = ['payments'];
+      Pi.authenticate(scopes).catch(()=>{});
 
-    // ÖDEME AKIŞI
-    document.getElementById("payBtn").onclick = async () => {
-      logBox.innerHTML = "";
-      log("Ödeme başlatılıyor…");
-
-      try {
-        await Pi.createPayment(
-          // 1) Ödeme bilgileri
-          {
-            amount: 0.01,                          // Test-π
-            memo: "Hackathon Test Payment",        // Gösterilecek not
-            metadata: { source: "payment.html" }   // İstersen ek bilgi
-          },
-
-          // 2) Sunucu onayı ISTE
-          {
-            onReadyForServerApproval: async (paymentId) => {
-              log("Onay bekleniyor…\nPaymentID: " + paymentId);
-
-              const r = await fetch(`${BACKEND}/approve-payment`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ paymentId })
-              });
-
-              if (!r.ok) throw new Error("Sunucu onayı başarısız (approve-payment).");
-              const data = await r.json();
-              if (!data.approved) throw new Error("Ödeme sunucu tarafından reddedildi.");
-              log("Sunucu onayı alındı.", "ok");
+      // Ödeme butonu
+      document.getElementById("payBtn").onclick = async () => {
+        log("Ödeme başlatılıyor...");
+        try {
+          await Pi.createPayment(
+            {
+              amount: 0.01,
+              memo: "Hackathon Test Payment",
+              metadata: { source: "payment.html" },
             },
-
-            // 3) Sunucu TAMAMLAMA ISTE
-            onReadyForServerCompletion: async (paymentId) => {
-              log("Tamamlanıyor…\nPaymentID: " + paymentId);
-
-              const r = await fetch(`${BACKEND}/complete-payment`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ paymentId })
-              });
-
-              if (!r.ok) throw new Error("Sunucu tamamlama başarısız (complete-payment).");
-              const data = await r.json();
-              if (!data.completed) throw new Error("Ödeme sunucu tarafından tamamlanmadı.");
-              log("Ödeme tamamlandı ✅", "ok");
-            },
-
-            // 4) İPTAL
-            onCancel: async (paymentId) => {
-              log("İptal edildi.\nPaymentID: " + paymentId, "err");
-              // bilgilendirme için backend’e haber göndermek istersen:
-              try {
-                await fetch(`${BACKEND}/cancel-payment`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
+            {
+              onReadyForServerApproval: async (paymentId) => {
+                log("Onay bekleniyor…\nPaymentId: " + paymentId);
+                await fetch('/approve-payment', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ paymentId })
                 });
-              } catch (_) {}
+              },
+              onReadyForServerCompletion: async (paymentId) => {
+                log("Tamamlanıyor…\nPaymentId: " + paymentId);
+                await fetch('/complete-payment', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ paymentId })
+                });
+              },
+              onCancel: (paymentId) => {
+                log("İptal edildi\nPaymentId: " + paymentId);
+              },
+              onError: (error, paymentId) => {
+                log("Hata: " + error + "\nPaymentId: " + paymentId);
+              }
             }
-          }
-        );
-      } catch (err) {
-        log("Hata: " + (err?.message || String(err)), "err");
-      }
-    };
+          );
+        } catch (err) {
+          log("Ödeme başlatılamadı: " + err);
+        }
+      };
+    }
   </script>
 </body>
 </html>
