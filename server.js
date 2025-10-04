@@ -1,34 +1,37 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const cors = require("cors");
-require("dotenv").config();
+// server.js
+const express = require('express');
+const cors = require('cors');
+const bodyParser = require('body-parser');
 
 const app = express();
+app.use(cors());                // test için herkese açık
 app.use(bodyParser.json());
-app.use(cors());
 
-// API KEY ve Secret (Pi Developer Portal'dan aldığın)
-const API_KEY = process.env.PI_API_KEY || "BURAYA_API_KEYIN_GELECEK";
+// Basit sağlık kontrolü
+app.get('/health', (req, res) => res.json({ ok: true }));
 
-// Basit test route
-app.get("/", (req, res) => {
-  res.send("Pi Backend Çalışıyor 🚀");
-});
-
-// Ödeme endpoint (örnek)
-app.post("/create-payment", (req, res) => {
-  const { amount, memo } = req.body;
-  if (!amount) return res.status(400).send("Amount required");
-
+// PiNet metadata (backend seçtiğin için basit bir çıktı verelim)
+app.get('/metadata', (req, res) => {
   res.json({
-    identifier: "test_payment_123",
-    amount,
-    memo: memo || "Test Ödemesi",
-    status: "created"
+    name: "Spiritual Academy",
+    description: "Testnet backend",
+    url: "https://spiritualacademy.work"
   });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server ${PORT} portunda çalışıyor...`);
+// Pi Wallet / Platform bu uçları çağırır:
+// Testnet için her şeyi otomatik onayla ve tamamla
+app.post('/approve-payment', (req, res) => {
+  res.json({ approved: true });
 });
+
+app.post('/complete-payment', (req, res) => {
+  res.json({ completed: true });
+});
+
+app.post('/cancel-payment', (req, res) => {
+  res.json({ cancelled: true });
+});
+
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => console.log('Server listening on', PORT));
