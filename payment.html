@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Pi Test Ödemesi</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- Pi SDK -->
   <script src="https://sdk.minepi.com/pi-sdk.js"></script>
   <style>
@@ -15,11 +15,15 @@
 <body>
   <h2>Pi Test Ödemesi</h2>
   <p>Bu sayfa yalnızca 10. adımı tamamlamak için test amaçlıdır.</p>
+
   <button id="payBtn">0.01 Test-π ile Öde</button>
   <div id="log"></div>
 
   <script>
-    const log = (m) => document.getElementById("log").innerText = m;
+    // *** BACKEND URL'İNİZ – Render adresiniz ***
+    const BACKEND = "https://spiritual-academy.onrender.com";
+
+    const log = (m) => (document.getElementById("log").innerText = m);
 
     // Pi Browser kontrolü
     if (!window.Pi) {
@@ -28,9 +32,9 @@
       // SDK başlat
       Pi.init({ version: "2.0" });
 
-      // Authentication (opsiyonel)
-      const scopes = ['payments'];
-      Pi.authenticate(scopes).catch(()=>{});
+      // Authentication (opsiyonel ama payments scope'u iyi olur)
+      const scopes = ["payments"];
+      Pi.authenticate(scopes).catch(() => {});
 
       // Ödeme butonu
       document.getElementById("payBtn").onclick = async () => {
@@ -43,28 +47,41 @@
               metadata: { source: "payment.html" },
             },
             {
+              // 1) Sunucu onayı
               onReadyForServerApproval: async (paymentId) => {
                 log("Onay bekleniyor…\nPaymentId: " + paymentId);
-                await fetch('/approve-payment', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ paymentId })
+                await fetch(`${BACKEND}/approve-payment`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ paymentId }),
                 });
               },
-              onReadyForServerCompletion: async (paymentId) => {
-                log("Tamamlanıyor…\nPaymentId: " + paymentId);
-                await fetch('/complete-payment', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ paymentId })
+
+              // 2) Tamamlama (cüzdandan txid gelebilir)
+              onReadyForServerCompletion: async (paymentId, txid) => {
+                log("Tamamlanıyor…\nPaymentId: " + paymentId + (txid ? `\nTxid: ${txid}` : ""));
+                await fetch(`${BACKEND}/complete-payment`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ paymentId, txid }),
                 });
               },
+
+              // 3) İptal
               onCancel: (paymentId) => {
                 log("İptal edildi\nPaymentId: " + paymentId);
+                // (İsterseniz backend'e de haber verebilirsiniz)
+                fetch(`${BACKEND}/cancel-payment`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ paymentId }),
+                }).catch(() => {});
               },
+
+              // 4) Hata
               onError: (error, paymentId) => {
-                log("Hata: " + error + "\nPaymentId: " + paymentId);
-              }
+                log("Hata: " + error + "\nPaymentId: " + (paymentId || "-"));
+              },
             }
           );
         } catch (err) {
