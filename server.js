@@ -2,13 +2,24 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// --- STATIC SERVE (kritik) ---
+// Bu satır, repo kökündeki tüm dosyaları (validation-key.txt dahil) servis eder.
+app.use(express.static(__dirname));
+
+// Ek güvence: validation-key.txt'yi açıkça düz metin olarak servis et
+app.get("/validation-key.txt", (req, res) => {
+  res.type("text/plain");
+  res.sendFile(path.join(__dirname, "validation-key.txt"));
+});
+
 // ---- Ayarlar ----
-const API_KEY = process.env.API_KEY; // Render'da Environment Variable olarak ekli
+const API_KEY = process.env.API_KEY; // Render -> Environment Variable
 const PI_API = "https://api.minepi.com/v2";
 
 // ---- Basit kontroller ----
@@ -45,8 +56,6 @@ app.post("/approve-payment", async (req, res) => {
 });
 
 // 2) Tamamlama
-// Not: Bazı cüzdan sürümleri txid'i callback'e gönderir, bazı akışlarda backend
-//     payment detaylarını sorgulayarak da alabilirsiniz. Burada txid opsiyonel.
 app.post("/complete-payment", async (req, res) => {
   try {
     const { paymentId, txid } = req.body || {};
