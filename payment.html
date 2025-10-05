@@ -1,101 +1,138 @@
 <!DOCTYPE html>
 <html lang="tr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>✨ Spiritual Academy</title>
-    <script src="https://sdk.minepi.com/pi-sdk.js"></script>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        text-align: center;
-        padding-top: 50px;
-        background: #faf8ff;
-      }
-      button {
-        background-color: #8b5cf6;
-        color: white;
-        border: none;
-        padding: 12px 25px;
-        border-radius: 8px;
-        cursor: pointer;
-        margin: 10px;
-        font-size: 16px;
-      }
-      button:disabled {
-        background-color: #c4b5fd;
-        cursor: not-allowed;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>✨ Spiritual Academy</h1>
-    <p>Pi ile ödeme yapabilirsiniz.</p>
-    <button id="login">🔑 Pi ile Giriş Yap</button>
-    <button id="pay" disabled>💜 5.99 Pi ile Öde</button>
+<head>
+  <meta charset="UTF-8" />
+  <title>Pi Test Ödemesi — Spiritual Academy</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Pi SDK -->
+  <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 20px; background:#f7f7fb; }
+    .card { max-width:680px; margin:24px auto; background:#fff; padding:20px; border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,.04) }
+    button { font-size: 18px; padding: 12px 18px; margin-top: 12px; border-radius:10px; border:0; cursor:pointer; }
+    .primary { background: linear-gradient(135deg,#7b61ff,#9a6bff); color:#fff; }
+    .muted { color:#556; font-size:14px; margin-top:8px; }
+    #log { margin-top:14px; font-size:13px; white-space:pre-wrap; color:#222; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Pi Test Ödemesi — Spiritual Academy</h2>
+    <p class="muted">Bu sayfa Pi Browser içinde test amaçlıdır. Ödeme sunucu onayı ile tamamlanır.</p>
 
-    <script>
-      const backendURL = "https://spiritual-academy.onrender.com";
-      Pi.init({ version: "2.0", sandbox: false });
+    <div>
+      <div id="productTitle" style="font-weight:600; margin-top:8px">Ürün: <span id="pTitle">Test Ürünü</span></div>
+      <div id="productPrice" style="margin-top:6px; font-size:18px">Fiyat: <span id="pPrice">5.99</span> Pi</div>
+      <button id="payBtn" class="primary">💜 Öde</button>
+      <div id="log"></div>
+    </div>
+  </div>
 
-      async function onIncompletePaymentFound(payment) {
-        console.log("Eksik ödeme bulundu:", payment);
+<script>
+  // --- Güvenlik/ön bilgi ---
+  // Bu sayfa Pi SDK ile ödeme başlatır ve backend uçlarına (aynı origin) POST eder:
+  // /approve-payment ve /complete-payment -> server.js tarafında işlenir.
+  // Query string ile parametre verilebilir:
+  // ?amount=5.99&memo=Nefes&productId=breath-001
+
+  // --- Pi SDK init (Mainnet) ---
+  if (window.Pi) {
+    try { window.Pi.init({ version: "2.0", sandbox: false }); } catch(e){ console.warn(e); }
+  }
+
+  const el = (id) => document.getElementById(id);
+  const log = (m) => { el('log').innerText = (new Date().toLocaleTimeString()) + " — " + m; };
+
+  // --- URL paramlarından oku (default değerler)
+  const qs = new URLSearchParams(location.search);
+  const rawAmount = parseFloat(qs.get('amount'));
+  const amount = isNaN(rawAmount) ? 5.99 : rawAmount;
+  const memo = qs.get('memo') ? decodeURIComponent(qs.get('memo')) : 'Hackathon Test Payment';
+  const productId = qs.get('productId') || 'default-001';
+
+  // UI'ı ayarla
+  el('pTitle').innerText = memo;
+  el('pPrice').innerText = amount;
+
+  // Server POST helper (aynı origin)
+  async function post(path, bodyObj) {
+    const r = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bodyObj || {})
+    });
+    const text = await r.text();
+    let data;
+    try { data = JSON.parse(text); } catch(e){ data = text; }
+    if (!r.ok) throw { status: r.status, data };
+    return data;
+  }
+
+  // Ödeme workflow
+  document.getElementById('payBtn').onclick = async () => {
+    try {
+      // Pi Browser kontrolü
+      if (!window.Pi) {
+        log("Hata: Lütfen Pi Browser içinde açın.");
+        alert("Bu sayfayı Pi Browser içinde açın.");
+        return;
       }
 
-      const loginButton = document.getElementById("login");
-      const payButton = document.getElementById("pay");
-      let user = null;
+      log("Auth isteniyor...");
+      // authenticate (payments scope)
+      await window.Pi.authenticate(['payments']).catch(()=>{ /* kullanıcı iptal edebilir */ });
 
-      loginButton.addEventListener("click", async () => {
-        try {
-          user = await Pi.authenticate(
-            ["username", "payments"],
-            onIncompletePaymentFound
-          );
-          alert("Giriş başarılı: @" + user.username);
-          payButton.disabled = false;
-        } catch (err) {
-          alert("Giriş başarısız: " + err);
+      log("Ödeme başlatılıyor...");
+
+      const paymentData = {
+        amount: amount,
+        memo: memo,
+        metadata: { productId }
+      };
+
+      const callbacks = {
+        onReadyForServerApproval: async (paymentId) => {
+          log("Sunucu onayı bekleniyor… paymentId: " + paymentId);
+          try {
+            await post('/approve-payment', { paymentId });
+            log("Sunucu onaylandı.");
+          } catch(e) {
+            console.error(e);
+            log("Sunucu onayı başarısız: " + JSON.stringify(e));
+            alert("Sunucu onayı başarısız. Konsolu kontrol et.");
+          }
+        },
+        onReadyForServerCompletion: async (paymentId, txid) => {
+          log("Tamamlama bekleniyor… paymentId: " + paymentId + " txid: " + txid);
+          try {
+            await post('/complete-payment', { paymentId, txid });
+            log("Ödeme başarıyla tamamlandı.");
+            alert("Ödeme başarılı. Teşekkürler!");
+          } catch(e) {
+            console.error(e);
+            log("Tamamlama başarısız: " + JSON.stringify(e));
+            alert("Tamamlama başarısız. Konsolu kontrol et.");
+          }
+        },
+        onCancel: (paymentId) => {
+          log("Kullanıcı iptal etti. paymentId: " + paymentId);
+        },
+        onError: (err, paymentId) => {
+          console.error(err);
+          log("SDK Hata: " + (err?.message || err) + " paymentId: " + paymentId);
+          alert("Ödeme hatası: " + (err?.message || err));
         }
-      });
+      };
 
-      payButton.addEventListener("click", async () => {
-        if (!user) return alert("Lütfen önce giriş yapın.");
-
-        const paymentData = {
-          amount: 5.99,
-          memo: "Spiritual Academy - Nefes ve Meditasyon",
-          metadata: { type: "kurs", ad: "Nefes ve Meditasyon" },
-        };
-
-        try {
-          const payment = await Pi.createPayment(paymentData, {
-            onReadyForServerApproval: async (paymentId) => {
-              await fetch(`${backendURL}/approve-payment`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ paymentId }),
-              });
-            },
-            onReadyForServerCompletion: async (paymentId, txid) => {
-              await fetch(`${backendURL}/complete-payment`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ paymentId, txid }),
-              });
-              alert("Ödeme tamamlandı!");
-            },
-            onCancel: (paymentId) => {
-              alert("Ödeme iptal edildi.");
-            },
-            onError: (err, payment) => {
-              alert("Hata oluştu: " + err);
-            },
-          });
-        } catch (err) {
-          alert("Ödeme başlatılamadı: " + err);
-        }
-      });
-    </script>
-  </body>
+      // SDK çağrısı
+      await window.Pi.createPayment(paymentData, callbacks);
+      log("SDK ödeme akışı başlatıldı, cüzdan ekranını takip edin.");
+    } catch (err) {
+      console.error(err);
+      log("Ödeme başlatılamadı: " + (err?.message || err));
+      alert("Ödeme başlatılamadı: " + (err?.message || err));
+    }
+  };
+</script>
+</body>
 </html>
