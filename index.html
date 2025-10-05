@@ -3,124 +3,43 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spiritual Academy</title>
-
-  <!-- Pi SDK -->
-  <script src="https://sdk.minepi.com/pi-sdk.js"></script>
+  <title>Spiritual Academy — Redirect</title>
 
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:0; display:grid; place-items:center; min-height:100dvh; background:#f7f7fb;}
-    .card { max-width:680px; width:92%; background:#fff; padding:28px; border-radius:16px; box-shadow:0 12px 30px rgba(0,0,0,.06);}
-    h1 { margin-top:0; }
-    .row { display:flex; gap:12px; flex-wrap:wrap; }
-    button { flex:1; padding:14px 18px; border-radius:10px; border:0; cursor:pointer; font-weight:600; }
-    .primary { background:linear-gradient(135deg,#7b61ff,#9a6bff); color:#fff; }
-    .ghost { background:#eee; }
-    .muted { color:#666; font-size:14px; }
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f7f7fb}
+    .box{max-width:720px;width:92%;background:#fff;padding:24px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.08);text-align:center}
+    .muted{color:#555;margin-top:8px}
+    .row{margin-top:18px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+    a.btn{padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600}
+    .primary{background:linear-gradient(135deg,#7b61ff,#9a6bff);color:#fff}
+    .ghost{background:#eee;color:#333}
   </style>
 </head>
 <body>
-  <div class="card">
+  <div class="box">
     <h1>✨ Spiritual Academy</h1>
-    <p class="muted">Pi Browser içinde giriş yapın ve 5.99&nbsp;Pi satın almayı deneyin.</p>
+    <p class="muted">Uygulama sayfasına yönlendiriliyorsunuz...</p>
 
-    <div class="row" style="margin:16px 0 8px">
-      <button id="btn-login" class="primary">🔐 Pi ile Giriş Yap</button>
-      <button id="btn-pay"   class="ghost" disabled>💜 5.99&nbsp;Pi ile Öde</button>
+    <div class="row">
+      <a id="open-app" class="btn primary" href="https://spiritualacademy7697.pinet.com">Uygulamayı Aç (PiNet)</a>
+      <a id="open-pay" class="btn ghost" href="/odeme.html">Ödeme (Test) /odeme.html</a>
     </div>
 
-    <div id="status" class="muted">Hazır…</div>
+    <p class="muted" style="margin-top:18px;font-size:13px">
+      Eğer otomatik yönlendirme olmazsa "Uygulamayı Aç" butonuna tıklayın.  
+      Ödeme testleri için "Ödeme (Test)" butonunu kullanabilirsiniz.
+    </p>
   </div>
 
 <script>
-  // ---- Pi SDK init (Mainnet) ----
-  window.Pi.init({ version: "2.0", sandbox: false });
-
-  const statusEl = document.getElementById('status');
-  const btnLogin = document.getElementById('btn-login');
-  const btnPay   = document.getElementById('btn-pay');
-
-  // Küçük yardımcı
-  const setStatus = (t) => statusEl.textContent = t;
-
-  // ---- LOGIN ----
-  btnLogin.onclick = async () => {
-    try {
-      const scopes = ['payments'];    // ödemeyi başlatmak için gerekli
-      const auth = await window.Pi.authenticate(scopes, onIncompletePaymentFound);
-      const user = auth.user && auth.user.username ? '@' + auth.user.username : 'kullanıcı';
-      alert(`Giriş başarılı: ${user}`);
-      btnPay.disabled = false;
-      btnPay.className = 'primary';
-      setStatus('Giriş tamam. Ödeme başlatabilirsiniz.');
-    } catch (e) {
-      console.error(e);
-      alert('Giriş başarısız: ' + (e?.message || e));
-      setStatus('Giriş başarısız.');
-    }
-  };
-
-  // Pi SDK isterse yarım kalmış bir ödemeyi burada tamamlamaya çalışır
-  async function onIncompletePaymentFound(payment) {
-    // İstersen burada otomatik tamamlamayı tetikleyebilirsin
-    console.log('Incomplete payment found', payment);
-  }
-
-  // ---- PAYMENT ----
-  btnPay.onclick = async () => {
-    try {
-      // Ödeme parametreleri
-      const paymentData = {
-        amount: 5.99,
-        memo:   'Spiritual Academy - Nefes ve Meditasyon',
-        metadata: { productId: 'breath-meditation-001' }
-      };
-
-      // Sunucuya POST atmak için yardımcı (aynı origin)
-      async function post(path, bodyObj) {
-        const r = await fetch(path, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bodyObj || {})
-        });
-        if (!r.ok) throw new Error(`Server ${path} -> HTTP ${r.status}`);
-        return r.json();
-      }
-
-      const callbacks = {
-        // 1) Sunucu onayı
-        onReadyForServerApproval: async (paymentId) => {
-          setStatus('Sunucu onayı bekleniyor…');
-          await post('/approve-payment', { paymentId });
-        },
-        // 2) Sunucu tamamlama
-        onReadyForServerCompletion: async (paymentId, txid) => {
-          setStatus('Sunucu tamamlama bekleniyor…');
-          await post('/complete-payment', { paymentId, txid });
-        },
-        // 3) Kullanıcı iptali
-        onCancel: (paymentId) => {
-          setStatus('Ödeme kullanıcı tarafından iptal edildi.');
-          console.warn('Payment cancelled', paymentId);
-        },
-        // 4) Hata
-        onError: (err, paymentId) => {
-          setStatus('Ödeme hatası: ' + (err?.message || err));
-          console.error('Payment error', err, paymentId);
-          alert('Ödeme hatası: ' + (err?.message || err));
-        }
-      };
-
-      setStatus('Ödeme başlatılıyor…');
-      const payment = await window.Pi.createPayment(paymentData, callbacks);
-      console.log('Payment result', payment);
-      setStatus('Ödeme akışı gönderildi. Cüzdan ekranını takip edin.');
-    } catch (e) {
-      console.error(e);
-      alert('Ödeme başlatılamadı: ' + (e?.message || e));
-      setStatus('Ödeme başlatılamadı.');
-    }
-  };
+  // Hemen yönlendirme (çarpmadan önce küçük gecikme: 600ms)
+  // Eğer istersen 0 yapabilirsin. Bu satırı kaldırırsan otomatik yönlendirme olmaz.
+  setTimeout(function(){
+    // Ana hedef (PiNet uygulama URL)
+    const target = "https://spiritualacademy7697.pinet.com";
+    // Yönlendir
+    window.location.replace(target);
+  }, 600);
 </script>
 </body>
 </html>
