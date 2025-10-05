@@ -9,8 +9,23 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ---------- Statik dosyalar (index.html, payment.html, validation-key.txt vs.)
+// ---------- Statik dosyalar (dizin.html, odeme.html, validation-key.txt vs.)
 app.use(express.static(__dirname));
+
+// → Kök (/) isteğini dizin.html'e yönlendir
+app.get("/", (req, res) => {
+  return res.redirect("/dizin.html");
+});
+
+// → /dizin.html'i garantiye al (dosya adının tam olarak "dizin.html" olduğundan emin ol)
+app.get("/dizin.html", (req, res) => {
+  return res.sendFile(path.join(__dirname, "dizin.html"));
+});
+
+// (İsteğe bağlı) ödeme sayfasını da doğrudan servis et
+app.get("/odeme.html", (req, res) => {
+  return res.sendFile(path.join(__dirname, "odeme.html"));
+});
 
 // ---------- Validation Key (iki kaynaktan da çalışsın)
 app.get("/validation-key.txt", (req, res) => {
