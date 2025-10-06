@@ -6,30 +6,65 @@
   <title>Spiritual Academy</title>
 
   <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f7f7fb}
-    .box{max-width:720px;width:92%;background:#fff;padding:24px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.08);text-align:center}
-    .muted{color:#555;margin-top:8px}
-    .row{margin-top:18px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-    a.btn{padding:12px 18px;border-radius:10px;text-decoration:none;font-weight:600}
-    .primary{background:linear-gradient(135deg,#7b61ff,#9a6bff);color:#fff}
-    .ghost{background:#eee;color:#333}
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background: #f7f7fb;
+    }
+    .box {
+      max-width: 720px;
+      width: 92%;
+      background: #fff;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.08);
+      text-align: center;
+    }
+    .muted { color: #555; margin-top: 8px; }
+    .row { margin-top: 18px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    a.btn {
+      padding: 12px 18px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+    .primary {
+      background: linear-gradient(135deg, #7b61ff, #9a6bff);
+      color: #fff;
+    }
+    .primary:hover {
+      background: linear-gradient(135deg, #6b54e1, #8c5fff);
+    }
+    .ghost {
+      background: #eee;
+      color: #333;
+    }
+    .ghost:hover {
+      background: #ddd;
+    }
   </style>
 </head>
 <body>
   <div class="box">
     <h1>✨ Spiritual Academy</h1>
-    <p class="muted">Uygulamayı görüntülemek için "Uygulamayı Aç" butonuna tıklayın. Otomatik yönlendirme kapalıdır.</p>
+    <p class="muted">Uygulamayı görüntülemek için "Uygulamayı Aç" butonuna tıklayın.</p>
 
     <div class="row">
-      <!-- PiNet uygulama linki: butona tıklanınca PiNet içinde açılacak -->
-      <a class="btn primary" href="https://spiritualacademy7697.pinet.com" rel="noopener" target="_blank">Uygulamayı Aç (PiNet)</a>
+      <!-- Ana uygulama -->
+      <a class="btn primary" href="https://spiritualacademy7697.pinet.com" rel="noopener" target="_blank">Uygulamayı Aç</a>
 
-      <!-- Test/Debug için ödeme sayfası -->
-      <a class="btn ghost" href="/odeme.html" rel="noopener">Ödeme (Test) /odeme.html</a>
+      <!-- Ödeme sayfası -->
+      <a class="btn ghost" href="/payment.html" rel="noopener">Ödeme Sayfası</a>
     </div>
 
     <p class="muted" style="margin-top:18px;font-size:13px">
-      Not: Pi ödemeleri `/odeme.html` ve sunucu (Render) backend'iniz ile çalışır. Bu dosyayı güncellemek ödeme akışını bozmaz.
+      Bu proje Pi Network ekosistemiyle tam uyumlu çalışacak şekilde tasarlanmıştır.
+      Tüm işlemler yalnızca Pi üzerinden gerçekleştirilir.
     </p>
   </div>
 </body>
