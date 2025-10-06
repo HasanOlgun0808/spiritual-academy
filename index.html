@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spiritual Academy — Redirect</title>
+  <title>Spiritual Academy</title>
 
   <style>
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f7f7fb}
@@ -18,28 +18,19 @@
 <body>
   <div class="box">
     <h1>✨ Spiritual Academy</h1>
-    <p class="muted">Uygulama sayfasına yönlendiriliyorsunuz...</p>
+    <p class="muted">Uygulamayı görüntülemek için "Uygulamayı Aç" butonuna tıklayın. Otomatik yönlendirme kapalıdır.</p>
 
     <div class="row">
-      <a id="open-app" class="btn primary" href="https://spiritualacademy7697.pinet.com">Uygulamayı Aç (PiNet)</a>
-      <a id="open-pay" class="btn ghost" href="/odeme.html">Ödeme (Test) /odeme.html</a>
+      <!-- PiNet uygulama linki: butona tıklanınca PiNet içinde açılacak -->
+      <a class="btn primary" href="https://spiritualacademy7697.pinet.com" rel="noopener" target="_blank">Uygulamayı Aç (PiNet)</a>
+
+      <!-- Test/Debug için ödeme sayfası -->
+      <a class="btn ghost" href="/odeme.html" rel="noopener">Ödeme (Test) /odeme.html</a>
     </div>
 
     <p class="muted" style="margin-top:18px;font-size:13px">
-      Eğer otomatik yönlendirme olmazsa "Uygulamayı Aç" butonuna tıklayın.  
-      Ödeme testleri için "Ödeme (Test)" butonunu kullanabilirsiniz.
+      Not: Pi ödemeleri `/odeme.html` ve sunucu (Render) backend'iniz ile çalışır. Bu dosyayı güncellemek ödeme akışını bozmaz.
     </p>
   </div>
-
-<script>
-  // Hemen yönlendirme (çarpmadan önce küçük gecikme: 600ms)
-  // Eğer istersen 0 yapabilirsin. Bu satırı kaldırırsan otomatik yönlendirme olmaz.
-  setTimeout(function(){
-    // Ana hedef (PiNet uygulama URL)
-    const target = "https://spiritualacademy7697.pinet.com";
-    // Yönlendir
-    window.location.replace(target);
-  }, 600);
-</script>
 </body>
 </html>
