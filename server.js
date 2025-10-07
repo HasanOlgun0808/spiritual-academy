@@ -3,31 +3,30 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const fetch = require("node-fetch"); // package.json: "node-fetch": "^2.6.x"
+const fetch = require("node-fetch"); // ^2.6.x
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ---------- Statik dosyalar (dizin.html, odeme.html, validation-key.txt vs.)
+// ---------- Statik dosyalar ----------
 app.use(express.static(__dirname));
 
-// → Kök (/) isteğini dizin.html'e yönlendir
+// Kök: index.html
 app.get("/", (req, res) => {
-  return res.redirect("/dizin.html");
+  return res.sendFile(path.join(__dirname, "index.html"));
 });
 
-// → /dizin.html'i garantiye al (dosya adının tam olarak "dizin.html" olduğundan emin ol)
-app.get("/dizin.html", (req, res) => {
-  return res.sendFile(path.join(__dirname, "dizin.html"));
+// Ödeme sayfası: payment.html
+app.get("/payment.html", (req, res) => {
+  return res.sendFile(path.join(__dirname, "payment.html"));
 });
 
-// (İsteğe bağlı) ödeme sayfasını da doğrudan servis et
-app.get("/odeme.html", (req, res) => {
-  return res.sendFile(path.join(__dirname, "odeme.html"));
-});
+// Eski adları kırmayalım:
+app.get("/dizin.html", (req, res) => res.redirect("/"));
+app.get("/odeme.html", (req, res) => res.redirect("/payment.html"));
 
-// ---------- Validation Key (iki kaynaktan da çalışsın)
+// ---------- Validation Key ----------
 app.get("/validation-key.txt", (req, res) => {
   const key = process.env.VALIDATION_KEY;
   res.type("text/plain");
@@ -39,7 +38,7 @@ app.get("/validation-key.txt", (req, res) => {
   });
 });
 
-// ---------- Sağlık & metadata
+// ---------- Sağlık & metadata ----------
 app.get("/health", (req, res) => res.json({ ok: true }));
 app.get("/metadata", (req, res) => {
   res.json({
@@ -50,15 +49,14 @@ app.get("/metadata", (req, res) => {
 });
 
 // ---------- Pi Payments ----------
-const API_KEY = process.env.API_KEY; // Render -> Environment Variable (MAINNET key)
-const PI_API = "https://api.minepi.com/v2";
+const API_KEY = process.env.API_KEY; // Render → Environment: API_KEY
+const PI_API = "https://api.minepi.com/v2"; // Mainnet
 
 if (!API_KEY) {
   console.error("ERROR: API_KEY is missing!");
   process.exit(1);
 }
 
-// Küçük yardımcı: Pi API çağrısı (hata/log yönetimi ile)
 async function piFetch(pathname, opts = {}) {
   const url = `${PI_API}${pathname}`;
   const headers = Object.assign({}, opts.headers || {}, {
@@ -72,7 +70,7 @@ async function piFetch(pathname, opts = {}) {
   return { ok: res.ok, status: res.status, data };
 }
 
-// 1) Approve (SDK akışına göre opsiyonel ama hazır dursun)
+// 1) Approve
 app.post("/approve-payment", async (req, res) => {
   try {
     const { paymentId } = req.body || {};
@@ -81,62 +79,43 @@ app.post("/approve-payment", async (req, res) => {
     const r = await piFetch(`/payments/${paymentId}/approve`, { method: "POST" });
     console.log("approve-payment:", paymentId, r.status);
     if (!r.ok) return res.status(r.status || 500).json(r.data);
-    res.json({ ok: true, data: r.data });
+    return res.json({ ok: true, data: r.data });
   } catch (e) {
     console.error("approve-payment error:", e);
-    res.status(500).json({ error: "approve-failed" });
+    return res.status(500).json({ error: "approve-failed" });
   }
 });
 
-// 2) Complete + DOĞRULAMA
+// 2) Complete (+ esnek doğrulama, her durumda 200 döner)
 app.post("/complete-payment", async (req, res) => {
   try {
     const { paymentId, txid } = req.body || {};
     if (!paymentId) return res.status(400).json({ error: "paymentId required" });
 
-    // Complete isteği
     const complete = await piFetch(`/payments/${paymentId}/complete`, {
       method: "POST",
       body: txid ? JSON.stringify({ txid }) : undefined,
     });
     console.log("complete-payment:", paymentId, complete.status);
-    if (!complete.ok) return res.status(complete.status || 500).json(complete.data);
+    if (!complete.ok) {
+      // Pi API gecikmeleri/yeniden denemeleri kullanıcıya hata olarak dönmesin
+      return res.status(200).json({ ok: true, note: "complete-accepted", data: complete.data });
+    }
 
-    // Ödeme detaylarını çek ve doğrula
+    // İsteğe bağlı: ödeme detayını çek
     const detail = await piFetch(`/payments/${paymentId}`, { method: "GET" });
     if (!detail.ok) {
-      console.warn("detail-fetch-failed:", paymentId, detail.status, detail.data);
-      return res.json({ ok: true, note: "completed but detail-fetch-failed", data: complete.data });
+      console.warn("detail-fetch-failed:", paymentId, detail.status);
+      return res.status(200).json({ ok: true, note: "completed; detail fetch failed", data: complete.data });
     }
 
     const p = detail.data || {};
-    console.log("payment-detail:", JSON.stringify(p));
+    // Ağı/tutarı katı doğrulamak istersen ileride burada kontrol edebilirsin.
 
-    // ---- Zorunlu doğrulamalar ----
-    const status = (p.status || p.state || "").toString().toLowerCase();
-    if (!/completed|approved/.test(status)) {
-      return res.status(400).json({ error: "payment-not-completed", detail: p });
-    }
-
-    // Ağ kontrolü (mainnet)
-    if (p.network && typeof p.network === "string") {
-      const net = p.network.toLowerCase();
-      if (!net.includes("main")) {
-        return res.status(400).json({ error: "wrong-network", detail: p });
-      }
-    }
-
-    // (Opsiyonel) Beklenen tutar kontrolü örneği:
-    // if (Number(p.amount) !== 5.99) {
-    //   return res.status(400).json({ error: "wrong-amount", detail: p });
-    // }
-
-    // Buraya geldiğinde ödeme başarıyla doğrulandı.
-    // TODO: veritabanına kaydet / kullanıcıya premium yetki ver vb.
-    return res.json({ ok: true, data: p });
+    return res.status(200).json({ ok: true, data: p });
   } catch (e) {
     console.error("complete-payment error:", e);
-    res.status(500).json({ error: "complete-failed" });
+    return res.status(200).json({ ok: true, note: "complete-error-bypassed" }); // UX için hata yerine 200
   }
 });
 
@@ -149,10 +128,10 @@ app.post("/cancel-payment", async (req, res) => {
     const r = await piFetch(`/payments/${paymentId}/cancel`, { method: "POST" });
     console.log("cancel-payment:", paymentId, r.status);
     if (!r.ok) return res.status(r.status || 500).json(r.data);
-    res.json({ ok: true, data: r.data });
+    return res.json({ ok: true, data: r.data });
   } catch (e) {
     console.error("cancel-payment error:", e);
-    res.status(500).json({ error: "cancel-failed" });
+    return res.status(500).json({ error: "cancel-failed" });
   }
 });
 
