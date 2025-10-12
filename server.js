@@ -4,6 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const fetch = require("node-fetch"); // ^2.6.x
+const fs = require("fs"); // ← (ADD) i18n dosyaları için
 
 const app = express();
 app.use(cors());
@@ -25,6 +26,48 @@ app.get("/payment.html", (req, res) => {
 // Eski adları kırmayalım:
 app.get("/dizin.html", (req, res) => res.redirect("/"));
 app.get("/odeme.html", (req, res) => res.redirect("/payment.html"));
+
+/* =========================
+   (ADD) I18N – Çok dillilik
+   ========================= */
+const SUPPORTED_LANGS = ["en", "tr", "de", "zh", "ru"];
+
+/** İstekten uygun dili seçer (query.lang > Accept-Language > en). */
+function pickLang(req) {
+  const q = (req.query.lang || "").toLowerCase();
+  if (SUPPORTED_LANGS.includes(q)) return q;
+
+  const al = (req.headers["accept-language"] || "").toLowerCase();
+  const parts = al.split(",").map(s => s.split(";")[0].trim());
+  for (const p of parts) {
+    if (SUPPORTED_LANGS.includes(p)) return p;
+    const base = p.split("-")[0];
+    if (SUPPORTED_LANGS.includes(base)) return base;
+  }
+  return "en";
+}
+
+/** İstenen dilin JSON'unu gönder (yoksa en.json). */
+function sendLocale(res, lang) {
+  const file = path.join(__dirname, "locales", `${lang}.json`);
+  res.set("Cache-Control", "public, max-age=3600");
+  if (fs.existsSync(file)) return res.sendFile(file);
+  return res.sendFile(path.join(__dirname, "locales", "en.json"));
+}
+
+// Otomatik dil algılayan endpoint
+app.get("/i18n/auto.json", (req, res) => {
+  const lang = pickLang(req);
+  return sendLocale(res, lang);
+});
+
+// Dil kodu ile alan endpoint (en, tr, de, zh, ru)
+app.get("/i18n/:lang.json", (req, res) => {
+  const lang = (req.params.lang || "").toLowerCase();
+  const chosen = SUPPORTED_LANGS.includes(lang) ? lang : "en";
+  return sendLocale(res, chosen);
+});
+/* ====== I18N SON ====== */
 
 // ---------- Validation Key ----------
 app.get("/validation-key.txt", (req, res) => {
