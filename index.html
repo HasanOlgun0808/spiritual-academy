@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Spiritual Academy</title>
+  <title data-i18n="app.title">Spiritual Academy</title>
 
   <style>
     body {
@@ -51,21 +51,54 @@
 </head>
 <body>
   <div class="box">
-    <h1>✨ Spiritual Academy</h1>
-    <p class="muted">Uygulamayı görüntülemek için "Uygulamayı Aç" butonuna tıklayın.</p>
+    <h1 data-i18n="app.title">✨ Spiritual Academy</h1>
+    <p class="muted" data-i18n="app.desc">
+      Uygulamayı görüntülemek için "Uygulamayı Aç" butonuna tıklayın.
+    </p>
 
     <div class="row">
-      <!-- Ana uygulama -->
-      <a class="btn primary" href="https://spiritualacademy7697.pinet.com" rel="noopener" target="_blank">Uygulamayı Aç</a>
-
-      <!-- Ödeme sayfası -->
-      <a class="btn ghost" href="/payment.html" rel="noopener">Ödeme Sayfası</a>
+      <a class="btn primary" href="https://spiritualacademy7697.pinet.com" rel="noopener" target="_blank" data-i18n="buttons.openApp">Uygulamayı Aç</a>
+      <a class="btn ghost" href="/payment.html" rel="noopener" data-i18n="buttons.payment">Ödeme Sayfası</a>
     </div>
 
-    <p class="muted" style="margin-top:18px;font-size:13px">
+    <p class="muted" style="margin-top:18px;font-size:13px" data-i18n="app.footer">
       Bu proje Pi Network ekosistemiyle tam uyumlu çalışacak şekilde tasarlanmıştır.
       Tüm işlemler yalnızca Pi üzerinden gerçekleştirilir.
     </p>
   </div>
+
+  <!-- Dil seçici -->
+  <div id="lang-switcher" style="position:fixed;right:12px;bottom:12px;z-index:9999;background:#fff;border:1px solid #ddd;border-radius:8px;padding:8px 10px;font-size:14px;">
+    <strong>Language:</strong>
+    <button data-setlang="auto">Auto</button>
+    <button data-setlang="tr">TR</button>
+    <button data-setlang="en">EN</button>
+    <button data-setlang="de">DE</button>
+    <button data-setlang="zh">ZH</button>
+    <button data-setlang="ru">RU</button>
+  </div>
+
+  <!-- i18n Script -->
+  <script>
+    function getPinnedLang(){return localStorage.getItem('sa_lang')||'auto'}
+    function setPinnedLang(v){localStorage.setItem('sa_lang',v)}
+    async function loadI18n(lang){
+      const url=(lang==='auto')?'/i18n/auto.json':(`/i18n/${lang}.json`);
+      const r=await fetch(url); if(!r.ok) return;
+      const dict=await r.json(); applyI18n(dict);
+    }
+    function applyI18n(dict){
+      document.querySelectorAll('[data-i18n]').forEach(el=>{
+        const key=el.getAttribute('data-i18n');
+        const txt=key.split('.').reduce((o,k)=>o&&o[k]!=null?o[k]:undefined,dict);
+        if(txt!=null){ if(el.tagName==='INPUT') el.placeholder=txt; else el.textContent=txt; }
+      });
+    }
+    document.addEventListener('click',e=>{
+      const b=e.target.closest('[data-setlang]'); if(!b) return;
+      const lang=b.getAttribute('data-setlang'); setPinnedLang(lang); loadI18n(lang);
+    });
+    document.addEventListener('DOMContentLoaded',()=>loadI18n(getPinnedLang()));
+  </script>
 </body>
 </html>
