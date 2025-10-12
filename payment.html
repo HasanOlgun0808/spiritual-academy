@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <title>Pi Test Ödemesi — Spiritual Academy</title>
+  <title>Pi Ödemesi — Spiritual Academy</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Pi SDK -->
   <script src="https://sdk.minepi.com/pi-sdk.js"></script>
@@ -13,29 +13,42 @@
     .primary { background: linear-gradient(135deg,#7b61ff,#9a6bff); color:#fff; }
     .muted { color:#556; font-size:14px; margin-top:8px; }
     #log { margin-top:14px; font-size:13px; white-space:pre-wrap; color:#222; }
+    .row { margin-top:8px; }
   </style>
 </head>
 <body>
   <div class="card">
-    <h2>Pi Test Ödemesi — Spiritual Academy</h2>
-    <p class="muted">Bu sayfa Pi Browser içinde test amaçlıdır. Ödeme sunucu onayı ile tamamlanır.</p>
+    <h2 id="t-title">Pi Ödemesi — Spiritual Academy</h2>
+    <p class="muted" id="t-subtitle">Bu sayfa Pi Browser içinde test amaçlıdır. Ödeme sunucu onayı ile tamamlanır.</p>
 
-    <div>
-      <div id="productTitle" style="font-weight:600; margin-top:8px">Ürün: <span id="pTitle">Test Ürünü</span></div>
-      <div id="productPrice" style="margin-top:6px; font-size:18px">Fiyat: <span id="pPrice">5.99</span> Pi</div>
-      <button id="payBtn" class="primary">💜 Öde</button>
+    <div class="row">
+      <div style="font-weight:600;"><span id="t-product">Ürün</span>: <span id="pTitle">Test Ürünü</span></div>
+      <div style="font-size:18px"><span id="t-price">Fiyat</span>: <span id="pPrice">5.99</span> Pi</div>
+      <button id="payBtn" class="primary">💜 <span id="t-pay">Öde</span></button>
       <div id="log"></div>
     </div>
   </div>
 
 <script>
-  // --- Güvenlik/ön bilgi ---
-  // Bu sayfa Pi SDK ile ödeme başlatır ve backend uçlarına (aynı origin) POST eder:
-  // /approve-payment ve /complete-payment -> server.js tarafında işlenir.
-  // Query string ile parametre verilebilir:
-  // ?amount=5.99&memo=Nefes&productId=breath-001
+  // ---------- I18N ----------
+  const qs = new URLSearchParams(location.search);
+  const langParam = (qs.get('lang') || '').toLowerCase();
 
-  // --- Pi SDK init (Mainnet) ---
+  async function loadI18n() {
+    try {
+      const url = langParam ? `/i18n/${langParam}.json` : '/i18n/auto.json';
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error('i18n fetch failed');
+      return await r.json();
+    } catch {
+      return {}; // fallback: boş sözlük -> varsayılan Türkçe metinler kalır
+    }
+  }
+  function t(dict, key, fallback) {
+    return (dict && dict[key]) ? dict[key] : fallback;
+  }
+
+  // ---------- Pi SDK ----------
   if (window.Pi) {
     try { window.Pi.init({ version: "2.0", sandbox: false }); } catch(e){ console.warn(e); }
   }
@@ -43,18 +56,26 @@
   const el = (id) => document.getElementById(id);
   const log = (m) => { el('log').innerText = (new Date().toLocaleTimeString()) + " — " + m; };
 
-  // --- URL paramlarından oku (default değerler)
-  const qs = new URLSearchParams(location.search);
+  // URL parametreleri (varsayılanlar)
   const rawAmount = parseFloat(qs.get('amount'));
   const amount = isNaN(rawAmount) ? 5.99 : rawAmount;
-  const memo = qs.get('memo') ? decodeURIComponent(qs.get('memo')) : 'Hackathon Test Payment';
+  const memo = qs.get('memo') ? decodeURIComponent(qs.get('memo')) : 'Hackathon Payment';
   const productId = qs.get('productId') || 'default-001';
 
-  // UI'ı ayarla
+  // UI değerlerini hazırla
   el('pTitle').innerText = memo;
   el('pPrice').innerText = amount;
 
-  // Server POST helper (aynı origin)
+  // I18N yükle ve metinleri uygula
+  loadI18n().then(dict => {
+    el('t-title').innerText   = t(dict, 'pay_title',   'Pi Ödemesi — Spiritual Academy');
+    el('t-subtitle').innerText= t(dict, 'pay_subtitle','Bu sayfa Pi Browser içinde test amaçlıdır. Ödeme sunucu onayı ile tamamlanır.');
+    el('t-product').innerText = t(dict, 'label_product','Ürün');
+    el('t-price').innerText   = t(dict, 'label_price',  'Fiyat');
+    el('t-pay').innerText     = t(dict, 'btn_pay',      'Öde');
+  });
+
+  // Sunucu POST helper (aynı origin)
   async function post(path, bodyObj) {
     const r = await fetch(path, {
       method: 'POST',
@@ -68,25 +89,22 @@
     return data;
   }
 
-  // Ödeme workflow
+  // Ödeme akışı
   document.getElementById('payBtn').onclick = async () => {
     try {
-      // Pi Browser kontrolü
       if (!window.Pi) {
-        log("Hata: Lütfen Pi Browser içinde açın.");
-        alert("Bu sayfayı Pi Browser içinde açın.");
+        log("Hata: Lütfen bu sayfayı Pi Browser içinde açın.");
+        alert("Lütfen Pi Browser içinde açın.");
         return;
       }
 
-      log("Auth isteniyor...");
-      // authenticate (payments scope)
+      log("Kimlik doğrulama isteniyor…");
       await window.Pi.authenticate(['payments']).catch(()=>{ /* kullanıcı iptal edebilir */ });
 
-      log("Ödeme başlatılıyor...");
-
+      log("Ödeme başlatılıyor…");
       const paymentData = {
-        amount: amount,
-        memo: memo,
+        amount,
+        memo,
         metadata: { productId }
       };
 
@@ -99,7 +117,7 @@
           } catch(e) {
             console.error(e);
             log("Sunucu onayı başarısız: " + JSON.stringify(e));
-            alert("Sunucu onayı başarısız. Konsolu kontrol et.");
+            alert("Sunucu onayı başarısız.");
           }
         },
         onReadyForServerCompletion: async (paymentId, txid) => {
@@ -111,7 +129,7 @@
           } catch(e) {
             console.error(e);
             log("Tamamlama başarısız: " + JSON.stringify(e));
-            alert("Tamamlama başarısız. Konsolu kontrol et.");
+            alert("Tamamlama başarısız.");
           }
         },
         onCancel: (paymentId) => {
@@ -124,9 +142,8 @@
         }
       };
 
-      // SDK çağrısı
       await window.Pi.createPayment(paymentData, callbacks);
-      log("SDK ödeme akışı başlatıldı, cüzdan ekranını takip edin.");
+      log("Cüzdan ekranını takip edin.");
     } catch (err) {
       console.error(err);
       log("Ödeme başlatılamadı: " + (err?.message || err));
