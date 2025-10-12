@@ -1,7 +1,10 @@
 {
-  "title": "Spiritual Academy",
-  "welcome": "Welcome!",
-  "pay": "Pay with Pi",
-  "success": "Payment completed.",
-  "error": "Unexpected error."
+  "pay_title": "Pi Payment — Spiritual Academy",
+  "pay_subtitle": "This page is for testing inside Pi Browser. Payment completes with server approval.",
+  "label_product": "Product",
+  "label_price": "Price",
+  "btn_pay": "Pay 💜",
+  "msg_success": "Payment completed successfully!",
+  "msg_error": "Unexpected error occurred.",
+  "msg_cancel": "Payment was cancelled by user."
 }
